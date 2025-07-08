@@ -93,10 +93,14 @@ impl App {
         file.read_to_string(&mut data);
         
         let mut rdr = ReaderBuilder::new()
-            .delimiter(b';')
+            .has_headers(true)
+            .delimiter(b',')
             .from_reader(data.as_bytes());
 
-        
+        for result in rdr.deserialize() {
+            let task: Task = result?;
+            self.tasks.push(task);
+        }
 
         Ok(())
     }
