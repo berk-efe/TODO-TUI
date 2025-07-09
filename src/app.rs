@@ -12,8 +12,10 @@ use csv::{Reader, ReaderBuilder};
 
 // ANCHOR: all
 
+#[derive(PartialEq)]
 pub enum CurrentScreen{
     Main,
+    Adding,
     Editing,
     Exiting,
 }
@@ -44,6 +46,7 @@ pub struct App {
     pub task_input: String,
     pub tasks: Vec<Task>,
     pub tasks_list_state: ListState,
+    pub editing_task_at: Option<usize>,
 
     // pub key_input: String,
 }
@@ -59,6 +62,8 @@ impl App {
             task_input: String::new(),
             tasks: Vec::new(),
             tasks_list_state: ListState::default(),
+            editing_task_at: None,
+            
             // key_input: String::new(),
         }
     }
@@ -106,6 +111,18 @@ impl App {
         }
 
         Ok(())
+    }
+
+    pub fn list_item_available(&mut self) -> Option<usize> {
+        if let Some(selected_index) = self.tasks_list_state.selected() {
+            if selected_index < self.tasks.len() {
+                Some(selected_index)
+            }else {
+                None
+            }
+        }else {
+            None
+        }
     }
 
    

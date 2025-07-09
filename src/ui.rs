@@ -1,10 +1,6 @@
 // ANCHOR: all
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, StatefulWidget, Wrap},
-    Frame,
+    crossterm::style, layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, text::{Line, Span, Text}, widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, StatefulWidget, Wrap}, Frame
 };
 
 use crate::app::{App, Task, CurrentScreen};
@@ -44,15 +40,25 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     // tasks_list_items.push(ListItem::new(Line::from("Task 1")));
     // tasks_list_items.push(ListItem::new(Line::from("Task 2")));
 
-    for Task { done, desc } in &app.tasks {
+    for (index, Task { done, desc}) in app.tasks.iter().enumerate() {
         let mut done_char = ' ';
         if *done == true {
             done_char = '✓'
         }
 
+        let is_editing = app.current_screen == CurrentScreen::Editing && app.editing_task_at == Some(index);
+
+        let cur_style = if is_editing {
+            Style::default().fg(Color::Blue)
+        }else if *done {
+            Style::default().fg(Color::Green)
+        }else {
+            Style::default().fg(Color::White)
+        };
+
         tasks_list_items.push(
             ListItem::new(Line::from(
-                Span::styled(format!("[{}] - {: <32}", done_char, desc), Style::default().fg(Color::Yellow))
+                Span::styled(format!("[{}] - {: <32}", done_char, desc), cur_style)
             ))
         );
     }
@@ -86,10 +92,11 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     let current_navigation_text = vec![
         // The first half of the text
         match app.current_screen {
-            CurrentScreen::Main => Span::styled("Normal Mode", Style::default().fg(Color::Green)),
-            CurrentScreen::Editing => {
-                Span::styled("Editing Mode", Style::default().fg(Color::Yellow))
+            CurrentScreen::Main => Span::styled("Normal Mode", Style::default().fg(Color::Gray)),
+            CurrentScreen::Adding => {
+                Span::styled("Adding Mode", Style::default().fg(Color::Yellow))
             }
+            CurrentScreen::Editing => Span::styled("Editing", Style::default().fg(Color::Green)),
             CurrentScreen::Exiting => Span::styled("Exiting", Style::default().fg(Color::LightRed)),
         }
         .to_owned(),
@@ -114,12 +121,16 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
                 "(q) to quit / (a) to make new task",
                 Style::default().fg(Color::Red),
             ),
-            CurrentScreen::Editing => Span::styled(
+            CurrentScreen::Adding => Span::styled(
                 "(ESC) to cancel",
                 Style::default().fg(Color::Red),
             ),
             CurrentScreen::Exiting => Span::styled(
                 "(q) to quit / (a) to make new task",
+                Style::default().fg(Color::Red),
+            ),
+            CurrentScreen::Editing => Span::styled(
+                "(ESC) to quit",
                 Style::default().fg(Color::Red),
             ),
         }

@@ -92,13 +92,26 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
             match app.current_screen {
                 CurrentScreen::Main => match key.code {
                     KeyCode::Char('a') => {
-                        app.current_screen = CurrentScreen::Editing;
+                        app.current_screen = CurrentScreen::Adding;
                         app.adding_task = true;
+                    }
+
+                    KeyCode::Char('e') => {
+                        app.current_screen = CurrentScreen::Editing;
+                        if let Some(selected_index) = app.list_item_available() {
+                            app.editing_task_at = Some(selected_index);
+                        }
                     }
 
                     KeyCode::Char('q') => {
                         app.current_screen = CurrentScreen::Exiting;
                     },
+
+                    KeyCode::Char('d') => {
+                        if let Some(selected_index) = app.list_item_available() {
+                            app.tasks.remove(selected_index);
+                        }
+                    }
                     
                     KeyCode::Down => {
                         app.tasks_list_state.select_next();
@@ -117,10 +130,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                     }
 
                     KeyCode::Enter => {
-                        if let Some(selected_index) = app.tasks_list_state.selected() {
-                            if selected_index < app.tasks.len() {
-                                app.tasks[selected_index].done = !app.tasks[selected_index].done;
-                            }
+                        if let Some(selected_index) = app.list_item_available() {
+                            app.tasks[selected_index].done = !app.tasks[selected_index].done;
                         }
                     }
 
@@ -138,7 +149,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                     _ => {}
                 }
 
-                CurrentScreen::Editing if key.kind == KeyEventKind::Press => {
+                CurrentScreen::Adding if key.kind == KeyEventKind::Press => {
                     match key.code {
                         KeyCode::Enter => {
                             app.save_task_value();
@@ -156,6 +167,30 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                         
                         _ => {}
                     }
+                }
+
+                CurrentScreen::Editing if key.kind == KeyEventKind::Press => {
+                    match key.code {
+                        KeyCode::Esc => {
+                            app.current_screen = CurrentScreen::Main;
+                        }
+
+                        KeyCode::Backspace => {
+                            if let Some(selected_index) = app.list_item_available() {
+                                app.tasks[selected_index].desc.pop();
+                            }
+                        }
+
+                        KeyCode::Char(char) => {
+                            if let Some(selected_index) = app.list_item_available() {
+                                app.tasks[selected_index].desc.push(char);
+                            }
+                        }
+
+
+                        _ => {}
+                    }
+
                 }
                 
                 _ => {}
