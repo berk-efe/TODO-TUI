@@ -5,6 +5,7 @@ A TUI todo application
 - [x] Use ListState to mark items as done
 - [x] Add edit for task descriptions, use e key to edit
 - [x] Add delete for task descriptions, use d key to delete
+- [ ] Try to add cursor to editing mode on tasks
 
 ## Bugs
 
