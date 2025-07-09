@@ -5,6 +5,8 @@ use std::fs::OpenOptions;
 
 use std::io::{self, Read};
 
+use std::path::Path;
+
 use serde::{Serialize, Deserialize};
 use std::fs::File;
 use csv::{Reader, ReaderBuilder};
@@ -79,10 +81,11 @@ impl App {
         self.current_screen = CurrentScreen::Main;
     }
 
-    pub fn write_tasks_to_csv(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn write_tasks_to_csv(&mut self) -> Result<(), Box<dyn Error>> {        
         let file = OpenOptions::new()
-            .append(true)
             .create(true)
+            .write(true)
+            .truncate(true)
             .open("tasks.csv")?;
 
         let mut writer = Writer::from_writer(file);
@@ -96,10 +99,11 @@ impl App {
     }
 
     pub fn read_tasks_from_csv(&mut self) -> Result<(), Box<dyn Error>> {
+    
         let mut file = File::open("tasks.csv")?;
         let mut data = String::new();
         file.read_to_string(&mut data);
-        
+
         let mut rdr = ReaderBuilder::new()
             .has_headers(true)
             .delimiter(b',')
