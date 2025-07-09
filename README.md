@@ -2,8 +2,10 @@
 A TUI todo application
 
 ## TODO
-- Use ListState to mark items as done
+- [x] Use ListState to mark items as done
+- [ ] Add edit for task descriptions, use e key to edit
+- [ ] Add delete for task descriptions, use d key to delete
 
 ## Bugs
 
-- Append error on saving files
+- [ ] Append error on saving files

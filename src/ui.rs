@@ -3,14 +3,14 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap, ListState},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, StatefulWidget, Wrap},
     Frame,
 };
 
 use crate::app::{App, Task, CurrentScreen};
 
 // ANCHOR: method_sig
-pub fn ui(frame: &mut Frame, app: &App) {
+pub fn ui(frame: &mut Frame, app: &mut App) {
     // ANCHOR_END: method_sig
     // Create the layout sections.
     // ANCHOR: ui_layout
@@ -57,9 +57,11 @@ pub fn ui(frame: &mut Frame, app: &App) {
         );
     }
 
-    let list = List::new(tasks_list_items);
+    let list = List::new(tasks_list_items)
+        .highlight_symbol("> ");
 
-    frame.render_widget(list, chunks[1]);
+
+    frame.render_stateful_widget(list, chunks[1], &mut app.tasks_list_state);
 
     // EDITING MODE
 

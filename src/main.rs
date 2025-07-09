@@ -75,6 +75,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
         app.read_tasks_from_csv();
     }
 
+    app.tasks_list_state.select(Some(0));
+
     loop {
         terminal.draw(|f| ui(f, app))?;
         // ANCHOR_END: ui_loop
@@ -97,7 +99,33 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                     KeyCode::Char('q') => {
                         app.current_screen = CurrentScreen::Exiting;
                     },
+                    
+                    KeyCode::Down => {
+                        app.tasks_list_state.select_next();
+                    }
+
+                    KeyCode::Up => {
+                        app.tasks_list_state.select_previous();
+                    }
+
+                    KeyCode::Left => {
+                        app.tasks_list_state.select_first();
+                    }
+
+                    KeyCode::Right => {
+                        app.tasks_list_state.select_last();
+                    }
+
+                    KeyCode::Enter => {
+                        if let Some(selected_index) = app.tasks_list_state.selected() {
+                            if selected_index < app.tasks.len() {
+                                app.tasks[selected_index].done = !app.tasks[selected_index].done;
+                            }
+                        }
+                    }
+
                     _ => {}
+
                 }
 
                 CurrentScreen::Exiting => match key.code {

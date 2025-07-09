@@ -1,4 +1,5 @@
 use csv::Writer;
+use ratatui::widgets::ListState;
 use std::{error::Error};
 use std::fs::OpenOptions;
 
@@ -42,6 +43,7 @@ pub struct App {
     pub current_screen: CurrentScreen,
     pub task_input: String,
     pub tasks: Vec<Task>,
+    pub tasks_list_state: ListState,
 
     // pub key_input: String,
 }
@@ -56,6 +58,7 @@ impl App {
             current_screen: CurrentScreen::Main,
             task_input: String::new(),
             tasks: Vec::new(),
+            tasks_list_state: ListState::default(),
             // key_input: String::new(),
         }
     }
