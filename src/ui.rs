@@ -118,7 +118,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     let current_keys_hint = {
         match app.current_screen {
             CurrentScreen::Main => Span::styled(
-                "(q) to quit / (a) to make new task",
+                "(q)uit / (a)dd / (d)elete",
                 Style::default().fg(Color::Red),
             ),
             CurrentScreen::Adding => Span::styled(
@@ -126,7 +126,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
                 Style::default().fg(Color::Red),
             ),
             CurrentScreen::Exiting => Span::styled(
-                "(q) to quit / (a) to make new task",
+                "(q)uit / (a)dd / (d)elete",
                 Style::default().fg(Color::Red),
             ),
             CurrentScreen::Editing => Span::styled(
