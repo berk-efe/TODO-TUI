@@ -5,6 +5,8 @@ A TUI todo application
 - [x] Use ListState to mark items as done
 - [x] Add edit for task descriptions, use e key to edit
 - [x] Add delete for task descriptions, use d key to delete
+- [x] Add Sidebar for file select
+- [ ] Switch whole csv thing to sqlite
 - [ ] Add firebase support for live changes among clients?
 
 ### Optional

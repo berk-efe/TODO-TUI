@@ -1,27 +1,26 @@
 use csv::Writer;
-use ratatui::widgets::ListState;
-use std::{error::Error};
+use ratatui::widgets::{List, ListState};
+use std::error::Error;
 use std::fs::OpenOptions;
 
 use std::io::{self, Read};
 
 use std::path::Path;
 
-use serde::{Serialize, Deserialize};
-use std::fs::File;
 use csv::{Reader, ReaderBuilder};
-
+use serde::{Deserialize, Serialize};
+use std::fs::File;
 
 // ANCHOR: all
 
 #[derive(PartialEq)]
-pub enum CurrentScreen{
+pub enum CurrentScreen {
     Main,
     Adding,
+    Sidebar,
     Editing,
     Exiting,
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Task {
@@ -30,15 +29,10 @@ pub struct Task {
 }
 
 impl Task {
-    fn new(desc:String) -> Self {
-        Self {
-            done: false,
-            desc,
-        }
+    fn new(desc: String) -> Self {
+        Self { done: false, desc }
     }
 }
-
-
 
 // ANCHOR: app_fields
 pub struct App {
@@ -50,6 +44,7 @@ pub struct App {
     pub tasks_list_state: ListState,
     pub editing_task_at: Option<usize>,
 
+    pub todo_files_list_state: ListState,
     // pub key_input: String,
 }
 // ANCHOR_END: app_fields
@@ -65,7 +60,8 @@ impl App {
             tasks: Vec::new(),
             tasks_list_state: ListState::default(),
             editing_task_at: None,
-            
+
+            todo_files_list_state: ListState::default(),
             // key_input: String::new(),
         }
     }
@@ -75,13 +71,12 @@ impl App {
         let new_task = Task::new(self.task_input.clone());
         self.tasks.insert(self.tasks.len(), new_task);
 
-
         self.task_input = String::new();
         self.adding_task = false;
         self.current_screen = CurrentScreen::Main;
     }
 
-    pub fn write_tasks_to_csv(&mut self) -> Result<(), Box<dyn Error>> {        
+    pub fn write_tasks_to_csv(&mut self) -> Result<(), Box<dyn Error>> {
         let file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -99,7 +94,6 @@ impl App {
     }
 
     pub fn read_tasks_from_csv(&mut self) -> Result<(), Box<dyn Error>> {
-    
         let mut file = File::open("tasks.csv")?;
         let mut data = String::new();
         file.read_to_string(&mut data);
@@ -121,14 +115,12 @@ impl App {
         if let Some(selected_index) = self.tasks_list_state.selected() {
             if selected_index < self.tasks.len() {
                 Some(selected_index)
-            }else {
+            } else {
                 None
             }
-        }else {
+        } else {
             None
         }
     }
-
-   
 }
 // ANCHOR_END: all

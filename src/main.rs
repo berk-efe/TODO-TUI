@@ -3,15 +3,14 @@ use std::{error::Error, io};
 
 use std::path::Path;
 
-
 use ratatui::{
+    Terminal,
     backend::{Backend, CrosstermBackend},
     crossterm::{
         event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
         execute,
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     },
-    Terminal,
 };
 
 mod app;
@@ -37,8 +36,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut app = App::new();
     let res = run_app(&mut terminal, &mut app);
     // ANCHOR_END: application_startup
-
-
 
     // ANCHOR: ending_boilerplate
     // restore terminal
@@ -76,6 +73,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
     }
 
     app.tasks_list_state.select(Some(0));
+    app.todo_files_list_state.select(Some(0));
 
     loop {
         terminal.draw(|f| ui(f, app))?;
@@ -88,9 +86,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                 // Skip events that are not KeyEventKind::Press
                 continue;
             }
-            
+
             match app.current_screen {
                 CurrentScreen::Main => match key.code {
+                    KeyCode::Char('b') => {
+                        app.current_screen = CurrentScreen::Sidebar;
+                    }
+
                     KeyCode::Char('a') => {
                         app.current_screen = CurrentScreen::Adding;
                         app.adding_task = true;
@@ -105,14 +107,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
 
                     KeyCode::Char('q') => {
                         app.current_screen = CurrentScreen::Exiting;
-                    },
+                    }
 
                     KeyCode::Char('d') => {
                         if let Some(selected_index) = app.list_item_available() {
                             app.tasks.remove(selected_index);
                         }
                     }
-                    
+
                     KeyCode::Down => {
                         app.tasks_list_state.select_next();
                     }
@@ -136,8 +138,31 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                     }
 
                     _ => {}
+                },
 
-                }
+                CurrentScreen::Sidebar => match key.code {
+                    KeyCode::Char('b') => {
+                        app.current_screen = CurrentScreen::Main;
+                    }
+
+                    KeyCode::Down => {
+                        app.todo_files_list_state.select_next();
+                    }
+
+                    KeyCode::Up => {
+                        app.todo_files_list_state.select_previous();
+                    }
+
+                    KeyCode::Left => {
+                        app.todo_files_list_state.select_first();
+                    }
+
+                    KeyCode::Right => {
+                        app.todo_files_list_state.select_last();
+                    }
+
+                    _ => {}
+                },
 
                 CurrentScreen::Exiting => match key.code {
                     KeyCode::Char('y') => {
@@ -147,57 +172,48 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                         return Ok(false);
                     }
                     _ => {}
-                }
+                },
 
-                CurrentScreen::Adding if key.kind == KeyEventKind::Press => {
-                    match key.code {
-                        KeyCode::Enter => {
-                            app.save_task_value();
-                        }
-                        KeyCode::Backspace => {
-                            app.task_input.pop();
-                        }
-                        KeyCode::Esc => {
-                            app.current_screen = CurrentScreen::Main;
-                            app.adding_task = false;
-                        }
-                        KeyCode::Char(value) => {
-                            app.task_input.push(value);
-                        }
-                        
-                        _ => {}
+                CurrentScreen::Adding if key.kind == KeyEventKind::Press => match key.code {
+                    KeyCode::Enter => {
+                        app.save_task_value();
                     }
-                }
-
-                CurrentScreen::Editing if key.kind == KeyEventKind::Press => {
-                    match key.code {
-                        KeyCode::Esc => {
-                            app.current_screen = CurrentScreen::Main;
-                        }
-
-                        KeyCode::Backspace => {
-                            if let Some(selected_index) = app.list_item_available() {
-                                app.tasks[selected_index].desc.pop();
-                            }
-                        }
-
-                        KeyCode::Char(char) => {
-                            if let Some(selected_index) = app.list_item_available() {
-                                app.tasks[selected_index].desc.push(char);
-                            }
-                        }
-
-
-                        _ => {}
+                    KeyCode::Backspace => {
+                        app.task_input.pop();
+                    }
+                    KeyCode::Esc => {
+                        app.current_screen = CurrentScreen::Main;
+                        app.adding_task = false;
+                    }
+                    KeyCode::Char(value) => {
+                        app.task_input.push(value);
                     }
 
-                }
-                
+                    _ => {}
+                },
+
+                CurrentScreen::Editing if key.kind == KeyEventKind::Press => match key.code {
+                    KeyCode::Esc => {
+                        app.current_screen = CurrentScreen::Main;
+                    }
+
+                    KeyCode::Backspace => {
+                        if let Some(selected_index) = app.list_item_available() {
+                            app.tasks[selected_index].desc.pop();
+                        }
+                    }
+
+                    KeyCode::Char(char) => {
+                        if let Some(selected_index) = app.list_item_available() {
+                            app.tasks[selected_index].desc.push(char);
+                        }
+                    }
+
+                    _ => {}
+                },
+
                 _ => {}
-
             }
-
-
         }
         // ANCHOR_END: event_poll
     }
