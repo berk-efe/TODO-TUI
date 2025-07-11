@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, StatefulWidget, Wrap},
 };
 
-use crate::app::{App, CurrentScreen, Task};
+use crate::app::{self, App, CurrentScreen, Task, Todo};
 
 // ANCHOR: method_sig
 pub fn ui(frame: &mut Frame, app: &mut App) {
@@ -36,18 +36,16 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     frame.render_widget(title, chunks[0]);
     // ANCHOR_END: title_paragraph
 
-    let mut todo_files_list_items: Vec<ListItem> = Vec::new();
+    let mut sidebar_list_items: Vec<ListItem> = Vec::new();
 
     // ADD DUMMY ELEMENTS FOR NOW
-    todo_files_list_items.push(ListItem::new(Line::from("Todo App 1")));
+    sidebar_list_items.push(ListItem::new(Line::from("Todo App 1")));
 
-    let todo_files_list = List::new(todo_files_list_items)
-        .highlight_symbol("> ")
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default()),
-        );
+    let sidebar_list = List::new(sidebar_list_items).highlight_symbol("> ").block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default()),
+    );
 
     let main = Layout::default()
         .direction(Direction::Horizontal)
@@ -55,35 +53,36 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .split(chunks[1]);
 
     if app.current_screen == CurrentScreen::Sidebar {
-        frame.render_stateful_widget(todo_files_list, main[0], &mut app.todo_files_list_state);
+        frame.render_stateful_widget(sidebar_list, main[0], &mut app.sidebar_state);
     }
     let mut tasks_list_items: Vec<ListItem> = Vec::new();
 
     // ADD DATA MANUALLY FOR TESTING
-    // tasks_list_items.push(ListItem::new(Line::from("Task 1")));
-    // tasks_list_items.push(ListItem::new(Line::from("Task 2")));
 
-    for (index, Task { done, desc }) in app.tasks.iter().enumerate() {
-        let mut done_char = ' ';
-        if *done == true {
-            done_char = '✓'
+    if let Some(todo) = app.current_todo.as_mut() {
+        let tasks = &mut todo.tasks;
+        for (index, Task { done, desc }) in tasks.iter().enumerate() {
+            let mut done_char = ' ';
+            if *done == true {
+                done_char = '✓'
+            }
+
+            let is_editing =
+                app.current_screen == CurrentScreen::Editing && app.editing_task_at == Some(index);
+
+            let cur_style = if is_editing {
+                Style::default().fg(Color::Blue)
+            } else if *done {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::White)
+            };
+
+            tasks_list_items.push(ListItem::new(Line::from(Span::styled(
+                format!("[{}] - {: <32}", done_char, desc),
+                cur_style,
+            ))));
         }
-
-        let is_editing =
-            app.current_screen == CurrentScreen::Editing && app.editing_task_at == Some(index);
-
-        let cur_style = if is_editing {
-            Style::default().fg(Color::Blue)
-        } else if *done {
-            Style::default().fg(Color::Green)
-        } else {
-            Style::default().fg(Color::White)
-        };
-
-        tasks_list_items.push(ListItem::new(Line::from(Span::styled(
-            format!("[{}] - {: <32}", done_char, desc),
-            cur_style,
-        ))));
     }
 
     let tasks_list = List::new(tasks_list_items).highlight_symbol("> ").block(
@@ -99,32 +98,23 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     }
     // EDITING MODE
 
-    if app.adding_task == true {
-        let popup_block = Block::default()
-            .title("Enter task.")
-            .borders(Borders::NONE)
-            .style(Style::default().bg(Color::DarkGray));
+    if app.current_screen == CurrentScreen::Adding {
+        create_popup("Add".to_string(), "Task".to_string(), frame, app);
+    }
 
-        let area = centered_rect(60, 25, frame.area());
-        frame.render_widget(popup_block, area);
-        // ANCHOR_END: editing_popup
-
-        // ANCHOR: key_value_blocks
-        let task_block = Block::default()
-            .title("Task description:")
-            .borders(Borders::ALL);
-
-        let desc_text = Paragraph::new(app.task_input.clone()).block(task_block);
-
-        frame.render_widget(desc_text, area);
+    if app.current_screen == CurrentScreen::AddingProj {
+        create_popup("Add".to_string(), "Todo".to_string(), frame, app);
     }
 
     let current_navigation_text = vec![
         // The first half of the text
         match app.current_screen {
-            CurrentScreen::Main => Span::styled("Normal Mode", Style::default().fg(Color::Gray)),
+            CurrentScreen::Main => Span::styled("Normal", Style::default().fg(Color::Gray)),
             CurrentScreen::Adding => {
-                Span::styled("Adding Mode", Style::default().fg(Color::Yellow))
+                Span::styled("Adding Task", Style::default().fg(Color::Yellow))
+            }
+            CurrentScreen::AddingProj => {
+                Span::styled("Adding Proj", Style::default().fg(Color::Yellow))
             }
             CurrentScreen::Sidebar => {
                 Span::styled("Sidebar Open", Style::default().fg(Color::Blue))
@@ -134,15 +124,6 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         }
         .to_owned(),
         // A white divider bar to separate the two sections
-        Span::styled(" | ", Style::default().fg(Color::White)),
-        // The final section of the text, with hints on what the user is editing
-        {
-            if app.adding_task == true {
-                Span::styled("Adding Task Key", Style::default().fg(Color::Green))
-            } else {
-                Span::styled("Doing NOTHING", Style::default().fg(Color::DarkGray))
-            }
-        },
     ];
 
     let mode_footer = Paragraph::new(Line::from(current_navigation_text))
@@ -155,6 +136,9 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
             }
             CurrentScreen::Adding => {
                 Span::styled("(ESC) to cancel", Style::default().fg(Color::Red))
+            }
+            CurrentScreen::AddingProj => {
+                Span::styled("(ESC) to cancel", Style::default().fg(Color::Yellow))
             }
             CurrentScreen::Sidebar => Span::styled(
                 "(b) sidebar toggle / arrow keys to select",
@@ -226,5 +210,25 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1] // Return the middle chunk
 }
 // ANCHOR_END: centered_rect
+
+fn create_popup(title: String, creating_: String, frame: &mut Frame, app: &mut App) {
+    let popup_block = Block::default()
+        .title(format!("{}", title))
+        .borders(Borders::NONE)
+        .style(Style::default().bg(Color::DarkGray));
+
+    let area = centered_rect(60, 25, frame.area());
+    frame.render_widget(popup_block, area);
+    // ANCHOR_END: editing_popup
+
+    // ANCHOR: key_value_blocks
+    let task_block = Block::default()
+        .title(format!("Creating: {}", creating_))
+        .borders(Borders::ALL);
+
+    let desc_text = Paragraph::new(app.input_buffer.clone()).block(task_block);
+
+    frame.render_widget(desc_text, area);
+}
 
 // ANCHOR_END: all

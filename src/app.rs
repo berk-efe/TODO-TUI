@@ -20,6 +20,22 @@ pub enum CurrentScreen {
     Sidebar,
     Editing,
     Exiting,
+    AddingProj,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Todo {
+    pub title: String,
+    pub tasks: Vec<Task>,
+}
+
+impl Todo {
+    fn new(title: String) -> Self {
+        Self {
+            title: String::new(),
+            tasks: Vec::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -34,17 +50,22 @@ impl Task {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct Response {
+    name: String,
+}
+
 // ANCHOR: app_fields
 pub struct App {
     pub running: bool,
-    pub adding_task: bool,
     pub current_screen: CurrentScreen,
-    pub task_input: String,
-    pub tasks: Vec<Task>,
+    pub input_buffer: String,
+    pub todo: Vec<Todo>,
+    pub current_todo: Option<Todo>,
     pub tasks_list_state: ListState,
     pub editing_task_at: Option<usize>,
 
-    pub todo_files_list_state: ListState,
+    pub sidebar_state: ListState,
     // pub key_input: String,
 }
 // ANCHOR_END: app_fields
@@ -54,73 +75,37 @@ impl App {
     pub fn new() -> App {
         App {
             running: true,
-            adding_task: false,
             current_screen: CurrentScreen::Main,
-            task_input: String::new(),
-            tasks: Vec::new(),
+            input_buffer: String::new(),
+            todo: Vec::new(),
+            current_todo: None,
             tasks_list_state: ListState::default(),
             editing_task_at: None,
 
-            todo_files_list_state: ListState::default(),
+            sidebar_state: ListState::default(),
             // key_input: String::new(),
         }
     }
     // ANCHOR_END: impl_new
 
     pub fn save_task_value(&mut self) {
-        let new_task = Task::new(self.task_input.clone());
-        self.tasks.insert(self.tasks.len(), new_task);
+        let new_task = Task::new(self.input_buffer.clone());
+        if let Some(todo) = self.current_todo.as_mut() {
+            todo.tasks.insert(todo.tasks.len(), new_task);
 
-        self.task_input = String::new();
-        self.adding_task = false;
-        self.current_screen = CurrentScreen::Main;
+            self.input_buffer = String::new();
+            self.current_screen = CurrentScreen::Main;
+        }
     }
 
-    pub fn write_tasks_to_csv(&mut self) -> Result<(), Box<dyn Error>> {
-        let file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open("tasks.csv")?;
-
-        let mut writer = Writer::from_writer(file);
-
-        for task in &self.tasks {
-            writer.serialize(task)?;
-        }
-
-        writer.flush()?;
-        Ok(())
-    }
-
-    pub fn read_tasks_from_csv(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut file = File::open("tasks.csv")?;
-        let mut data = String::new();
-        file.read_to_string(&mut data);
-
-        let mut rdr = ReaderBuilder::new()
-            .has_headers(true)
-            .delimiter(b',')
-            .from_reader(data.as_bytes());
-
-        for result in rdr.deserialize() {
-            let task: Task = result?;
-            self.tasks.push(task);
-        }
-
-        Ok(())
+    pub fn todo_tasks_available(&self) -> Option<&Vec<Task>> {
+        self.current_todo.as_ref().map(|todo| &todo.tasks)
     }
 
     pub fn list_item_available(&mut self) -> Option<usize> {
-        if let Some(selected_index) = self.tasks_list_state.selected() {
-            if selected_index < self.tasks.len() {
-                Some(selected_index)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        let index = self.tasks_list_state.selected()?;
+        let tasks = self.todo_tasks_available()?;
+        (index < tasks.len()).then_some(index)
     }
 }
 // ANCHOR_END: all
